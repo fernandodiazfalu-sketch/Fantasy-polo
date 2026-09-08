@@ -7,6 +7,7 @@ export default function TeamBuilder({ session }) {
   const [jugadores, setJugadores] = useState([]);
   const [partidos, setPartidos] = useState([]);
   const [alineaciones, setAlineaciones] = useState([]);
+  const [stats, setStats] = useState([]);
   const [jornada, setJornada] = useState('Fecha 1');
   const [slots, setSlots] = useState({}); // { [puesto]: jugador }
   const [capitan, setCapitan] = useState(null); // puesto (1-4) del capitán
@@ -18,14 +19,16 @@ export default function TeamBuilder({ session }) {
 
   useEffect(() => {
     async function load() {
-      const [{ data: jData }, { data: pData }, { data: aData }] = await Promise.all([
+      const [{ data: jData }, { data: pData }, { data: aData }, { data: sData }] = await Promise.all([
         supabase.from('polo_jugadores').select('*').order('equipo').order('puesto'),
         supabase.from('polo_partidos').select('*').order('id'),
         supabase.from('polo_alineaciones').select('*'),
+        supabase.from('polo_stats').select('*'),
       ]);
       setJugadores(jData || []);
       setPartidos(pData || []);
       setAlineaciones(aData || []);
+      setStats(sData || []);
     }
     load();
   }, []);
@@ -58,7 +61,7 @@ export default function TeamBuilder({ session }) {
         .maybeSingle();
       if (data?.slots?.length) {
         const bySlot = {};
-        data.slots.forEach((s) => { bySlot[s.puesto] = s; });
+        data.slots.forEach((s) => { bySlot[s.puesto] = { ...s, id: s.jugador_id }; });
         setSlots(bySlot);
       }
       if (data?.capitan_puesto) setCapitan(data.capitan_puesto);
@@ -112,7 +115,7 @@ export default function TeamBuilder({ session }) {
     setSaveStatus({ text: '', error: false });
     const slotsArray = [1, 2, 3, 4].map((p) => ({
       puesto: p,
-      jugador_id: slots[p].id,
+      jugador_id: slots[p].id ?? slots[p].jugador_id,
       nombre: slots[p].nombre,
       equipo: slots[p].equipo,
       hcp: slots[p].hcp,
@@ -221,6 +224,10 @@ export default function TeamBuilder({ session }) {
             alineaciones={alineaciones}
             jornada={jornada}
             equiposEnJuego={equiposEnJuego}
+            stats={stats}
+            misSlots={slots}
+            miCapitan={capitan}
+            maxPorEquipo={maxPorEquipo}
           />
         </div>
       </div>

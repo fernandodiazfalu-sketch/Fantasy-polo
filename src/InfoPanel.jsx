@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 
 const EQUIPOS = ['La Fe', 'La Irenita', 'Don Ercole', 'La Natividad La Dolfina', 'Las Monjitas'];
 
-export default function InfoPanel({ partidos, jugadores, alineaciones, jornada, equiposEnJuego }) {
+export default function InfoPanel({ partidos, jugadores, alineaciones, jornada, equiposEnJuego, stats, misSlots, miCapitan, maxPorEquipo }) {
   const [tab, setTab] = useState('fixture');
 
   const jornadas = useMemo(() => [...new Set(partidos.map((p) => p.jornada))], [partidos]);
@@ -36,6 +36,74 @@ export default function InfoPanel({ partidos, jugadores, alineaciones, jornada, 
     return jugadores.find((j) => j.id === id)?.nombre || '—';
   }
 
+  // --- Equipo ideal de la fecha: mejor combinación posible bajo las mismas reglas ---
+  function partidoDe(equipo) {
+    return partidos.find((p) => p.jornada === jornada && (p.local === equipo || p.visitante === equipo));
+  }
+
+  function puntosDe(jugadorId, equipo) {
+    const partido = partidoDe(equipo);
+    if (!partido || !stats) return 0;
+    const s = stats.find((st) => st.partido_id === partido.id && st.jugador_id === jugadorId);
+    return Number(s?.puntos ?? 0);
+  }
+
+  const equipoIdeal = useMemo(() => {
+    const equipos = [...equiposEnJuego];
+    if (!equipos.length) return null;
+
+    // candidato por puesto y equipo (según alineación real de la fecha)
+    const candidato = {};
+    for (const puesto of [1, 2, 3, 4]) {
+      candidato[puesto] = {};
+      for (const equipo of equipos) {
+        const row = alineaciones.find((a) => a.jornada === jornada && a.equipo === equipo && a.puesto === puesto);
+        if (row?.jugador_id) {
+          const jugador = jugadores.find((j) => j.id === row.jugador_id);
+          if (jugador) candidato[puesto][equipo] = { jugador, puntos: puntosDe(jugador.id, equipo) };
+        }
+      }
+    }
+
+    let mejor = null;
+    function buscar(puesto, elegido, counts, sum) {
+      if (puesto > 4) {
+        const puntosElegidos = Object.values(elegido).map((e) => e.puntos);
+        const bonus = puntosElegidos.length ? Math.max(...puntosElegidos) : 0;
+        const total = sum + bonus;
+        if (!mejor || total > mejor.total) {
+          mejor = { elegido: { ...elegido }, total };
+        }
+        return;
+      }
+      for (const equipo of Object.keys(candidato[puesto])) {
+        if ((counts[equipo] || 0) >= maxPorEquipo) continue;
+        elegido[puesto] = { equipo, ...candidato[puesto][equipo] };
+        counts[equipo] = (counts[equipo] || 0) + 1;
+        buscar(puesto + 1, elegido, counts, sum + candidato[puesto][equipo].puntos);
+        counts[equipo] -= 1;
+        delete elegido[puesto];
+      }
+    }
+    buscar(1, {}, {}, 0);
+    return mejor;
+  }, [equiposEnJuego, alineaciones, jugadores, stats, partidos, jornada, maxPorEquipo]);
+
+  const miPuntaje = useMemo(() => {
+    if (!misSlots) return 0;
+    return [1, 2, 3, 4].reduce((sum, p) => {
+      const slot = misSlots[p];
+      if (!slot) return sum;
+      const pts = puntosDe(slot.id ?? slot.jugador_id, slot.equipo);
+      return sum + (miCapitan === p ? pts * 2 : pts);
+    }, 0);
+  }, [misSlots, miCapitan, stats, partidos, jornada]);
+
+  const capitanIdealPuesto = equipoIdeal
+    ? Object.entries(equipoIdeal.elegido).reduce((best, [puesto, e]) =>
+        !best || e.puntos > equipoIdeal.elegido[best].puntos ? puesto : best, null)
+    : null;
+
   return (
     <div className="summary-card">
       <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
@@ -43,6 +111,7 @@ export default function InfoPanel({ partidos, jugadores, alineaciones, jornada, 
           { id: 'fixture', label: 'Fixture' },
           { id: 'posiciones', label: 'Posiciones' },
           { id: 'alineaciones', label: 'Alineaciones' },
+          { id: 'ideal', label: 'Equipo ideal' },
         ].map((t) => (
           <button
             key={t.id}
@@ -123,6 +192,45 @@ export default function InfoPanel({ partidos, jugadores, alineaciones, jornada, 
               })}
             </div>
           ))}
+        </div>
+      )}
+
+      {tab === 'ideal' && (
+        <div>
+          {!equipoIdeal ? (
+            <div className="summary-row empty">Todavía no hay datos suficientes para esta fecha.</div>
+          ) : (
+            <>
+              {[1, 2, 3, 4].map((puesto) => {
+                const e = equipoIdeal.elegido[puesto];
+                const esCapitanIdeal = String(capitanIdealPuesto) === String(puesto);
+                return (
+                  <div className="summary-row" key={puesto} style={{ fontSize: 13 }}>
+                    <div>
+                      <div className="name">
+                        {e ? e.jugador.nombre : '—'}{esCapitanIdeal ? ' (C)' : ''}
+                      </div>
+                      {e && <div className="meta">{e.equipo}</div>}
+                    </div>
+                    <div style={{ color: 'var(--gold-bright)', fontWeight: 700 }}>{e ? e.puntos : 0}</div>
+                  </div>
+                );
+              })}
+              <div className="summary-total">
+                <span>Puntaje ideal</span>
+                <span>{equipoIdeal.total}</span>
+              </div>
+              <div className="summary-total" style={{ borderTop: 'none', paddingTop: 0, marginTop: 4 }}>
+                <span>Tu puntaje</span>
+                <span>{miPuntaje}</span>
+              </div>
+              <div style={{ fontSize: 12, marginTop: 8, textAlign: 'right', color: 'var(--gold-bright)' }}>
+                {miPuntaje >= equipoIdeal.total
+                  ? '¡Armaste el equipo ideal!'
+                  : `Te faltaron ${equipoIdeal.total - miPuntaje} puntos vs. el ideal.`}
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>
