@@ -9,6 +9,7 @@ export default function TeamBuilder({ session }) {
   const [alineaciones, setAlineaciones] = useState([]);
   const [jornada, setJornada] = useState('Fecha 1');
   const [slots, setSlots] = useState({}); // { [puesto]: jugador }
+  const [capitan, setCapitan] = useState(null); // puesto (1-4) del capitán
   const [openPuesto, setOpenPuesto] = useState(null);
   const [saveStatus, setSaveStatus] = useState({ text: '', error: false });
   const [saving, setSaving] = useState(false);
@@ -48,9 +49,10 @@ export default function TeamBuilder({ session }) {
   useEffect(() => {
     async function loadSaved() {
       setSlots({});
+      setCapitan(null);
       const { data } = await supabase
         .from('polo_fantasy_equipos')
-        .select('slots')
+        .select('slots, capitan_puesto')
         .eq('user_id', session.user.id)
         .eq('jornada', jornada)
         .maybeSingle();
@@ -59,6 +61,7 @@ export default function TeamBuilder({ session }) {
         data.slots.forEach((s) => { bySlot[s.puesto] = s; });
         setSlots(bySlot);
       }
+      if (data?.capitan_puesto) setCapitan(data.capitan_puesto);
     }
     if (jugadores.length) loadSaved();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -94,11 +97,17 @@ export default function TeamBuilder({ session }) {
     setSaveStatus({ text: '', error: false });
   }
 
+  function toggleCapitan(puesto) {
+    setCapitan((prev) => (prev === puesto ? null : puesto));
+    setSaveStatus({ text: '', error: false });
+  }
+
   const equipoCompleto = [1, 2, 3, 4].every((p) => slots[p]);
+  const capitanElegido = !!capitan && !!slots[capitan];
   const totalHcp = [1, 2, 3, 4].reduce((sum, p) => sum + (slots[p]?.hcp || 0), 0);
 
   async function guardarEquipo() {
-    if (!equipoCompleto) return;
+    if (!equipoCompleto || !capitanElegido) return;
     setSaving(true);
     setSaveStatus({ text: '', error: false });
     const slotsArray = [1, 2, 3, 4].map((p) => ({
@@ -115,6 +124,7 @@ export default function TeamBuilder({ session }) {
         apodo,
         jornada,
         slots: slotsArray,
+        capitan_puesto: capitan,
       },
       { onConflict: 'user_id,jornada' }
     );
@@ -161,10 +171,16 @@ export default function TeamBuilder({ session }) {
         {equiposEnJuego.size <= 2
           ? 'Solo juegan 2 equipos esta fecha: podés elegir hasta 2 jugadores del mismo equipo.'
           : 'Máximo 1 jugador por equipo real en esta fecha.'}
+        {' '}Tocá el círculo "C" sobre un jugador elegido para nombrarlo capitán (duplica sus puntos).
       </p>
 
       <div className="builder-layout">
-        <PoloField slots={slots} onSlotClick={setOpenPuesto} />
+        <PoloField
+          slots={slots}
+          onSlotClick={setOpenPuesto}
+          capitanPuesto={capitan}
+          onCaptainToggle={toggleCapitan}
+        />
 
         <div className="side-panel">
           <div className="summary-card">
@@ -174,6 +190,7 @@ export default function TeamBuilder({ session }) {
                 <div>
                   <div className={slots[p] ? 'name' : 'empty'}>
                     {slots[p] ? slots[p].nombre : `Puesto ${p} — sin elegir`}
+                    {slots[p] && capitan === p ? ' (C)' : ''}
                   </div>
                   {slots[p] && <div className="meta">{slots[p].equipo}</div>}
                 </div>
@@ -188,11 +205,14 @@ export default function TeamBuilder({ session }) {
 
           <button
             className="primary-btn"
-            disabled={!equipoCompleto || saving}
+            disabled={!equipoCompleto || !capitanElegido || saving}
             onClick={guardarEquipo}
           >
             {saving ? 'Guardando...' : 'Guardar equipo'}
           </button>
+          {equipoCompleto && !capitanElegido && (
+            <div className="save-status error">Elegí un capitán antes de guardar.</div>
+          )}
           <div className={`save-status ${saveStatus.error ? 'error' : ''}`}>{saveStatus.text}</div>
 
           <InfoPanel

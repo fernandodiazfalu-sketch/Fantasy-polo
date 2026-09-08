@@ -51,14 +51,15 @@ const FIELD_SVG = `
 </svg>
 `;
 
-export default function PoloField({ slots, onSlotClick }) {
+export default function PoloField({ slots, onSlotClick, capitanPuesto, onCaptainToggle }) {
   return (
     <div className="field-wrap">
       <div dangerouslySetInnerHTML={{ __html: FIELD_SVG }} />
       {SLOT_BOXES.map((box) => {
         const filled = slots[box.puesto];
+        const esCapitan = capitanPuesto === box.puesto;
         return (
-          <button
+          <div
             key={box.puesto}
             className="slot-hit"
             style={{
@@ -67,7 +68,8 @@ export default function PoloField({ slots, onSlotClick }) {
               width: `${box.width}%`,
               height: `${box.height}%`,
               background: 'rgba(13, 27, 61, 0.88)',
-              border: '2px solid #f4d03f',
+              border: esCapitan ? '2px solid #ffffff' : '2px solid #f4d03f',
+              boxShadow: esCapitan ? '0 0 0 2px #f4d03f' : 'none',
               color: '#fff',
               display: 'flex',
               flexDirection: 'column',
@@ -75,16 +77,41 @@ export default function PoloField({ slots, onSlotClick }) {
               justifyContent: 'center',
               gap: 2,
               padding: '4px 8px',
+              position: 'absolute',
+              cursor: 'pointer',
             }}
             onClick={() => onSlotClick(box.puesto)}
           >
+            {filled && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onCaptainToggle(box.puesto); }}
+                title={esCapitan ? 'Quitar capitán' : 'Nombrar capitán'}
+                style={{
+                  position: 'absolute',
+                  top: -10,
+                  right: -10,
+                  width: 24,
+                  height: 24,
+                  borderRadius: '50%',
+                  border: 'none',
+                  background: esCapitan ? '#f4d03f' : 'rgba(246,241,228,0.85)',
+                  color: '#0d1b3d',
+                  fontWeight: 800,
+                  fontSize: 12,
+                  lineHeight: '24px',
+                  cursor: 'pointer',
+                }}
+              >
+                C
+              </button>
+            )}
             <span style={{ fontSize: '11px', color: '#f4d03f', fontWeight: 700, letterSpacing: '0.03em' }}>
               PUESTO {box.puesto}
             </span>
             {filled ? (
               <>
                 <span style={{ fontFamily: 'Fraunces, serif', fontSize: 'clamp(12px, 2.4vw, 15px)', fontWeight: 600, lineHeight: 1.15, textAlign: 'center' }}>
-                  {filled.nombre}
+                  {filled.nombre}{esCapitan ? ' (C)' : ''}
                 </span>
                 <span style={{ fontSize: '10px', color: '#c9d3e6' }}>
                   {filled.equipo} · hcp {filled.hcp}
@@ -93,7 +120,7 @@ export default function PoloField({ slots, onSlotClick }) {
             ) : (
               <span style={{ fontSize: '12px', color: '#c9d3e6', fontStyle: 'italic' }}>Elegir jugador</span>
             )}
-          </button>
+          </div>
         );
       })}
     </div>

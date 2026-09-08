@@ -41,7 +41,11 @@ export default function Clasificacion() {
     equipos.forEach((eq) => {
       const key = eq.user_id;
       if (!porUsuario[key]) porUsuario[key] = { apodo: eq.apodo || eq.email, email: eq.email, porJornada: {} };
-      const puntosJornada = (eq.slots || []).reduce((sum, slot) => sum + puntosDeSlot(slot, eq.jornada), 0);
+      const puntosJornada = (eq.slots || []).reduce((sum, slot) => {
+        const pts = puntosDeSlot(slot, eq.jornada);
+        const esCapitan = eq.capitan_puesto === slot.puesto;
+        return sum + (esCapitan ? pts * 2 : pts);
+      }, 0);
       porUsuario[key].porJornada[eq.jornada] = puntosJornada;
     });
     return Object.values(porUsuario).map((u) => ({
