@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { supabase } from './supabaseClient';
 import PoloField from './PoloField';
+import InfoPanel from './InfoPanel';
 
 export default function TeamBuilder({ session }) {
   const [jugadores, setJugadores] = useState([]);
@@ -193,6 +194,14 @@ export default function TeamBuilder({ session }) {
             {saving ? 'Guardando...' : 'Guardar equipo'}
           </button>
           <div className={`save-status ${saveStatus.error ? 'error' : ''}`}>{saveStatus.text}</div>
+
+          <InfoPanel
+            partidos={partidos}
+            jugadores={jugadores}
+            alineaciones={alineaciones}
+            jornada={jornada}
+            equiposEnJuego={equiposEnJuego}
+          />
         </div>
       </div>
 
