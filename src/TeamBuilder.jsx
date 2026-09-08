@@ -5,6 +5,7 @@ import PoloField from './PoloField';
 export default function TeamBuilder({ session }) {
   const [jugadores, setJugadores] = useState([]);
   const [partidos, setPartidos] = useState([]);
+  const [alineaciones, setAlineaciones] = useState([]);
   const [jornada, setJornada] = useState('Fecha 1');
   const [slots, setSlots] = useState({}); // { [puesto]: jugador }
   const [openPuesto, setOpenPuesto] = useState(null);
@@ -15,12 +16,14 @@ export default function TeamBuilder({ session }) {
 
   useEffect(() => {
     async function load() {
-      const [{ data: jData }, { data: pData }] = await Promise.all([
+      const [{ data: jData }, { data: pData }, { data: aData }] = await Promise.all([
         supabase.from('polo_jugadores').select('*').order('equipo').order('puesto'),
         supabase.from('polo_partidos').select('*').order('id'),
+        supabase.from('polo_alineaciones').select('*'),
       ]);
       setJugadores(jData || []);
       setPartidos(pData || []);
+      setAlineaciones(aData || []);
     }
     load();
   }, []);
@@ -69,10 +72,15 @@ export default function TeamBuilder({ session }) {
     return counts;
   }
 
+  // La lista elegible sale de la alineación cargada para esta fecha (no del plantel fijo),
+  // así respeta los cambios que hayas hecho en la pantalla de Alineaciones.
   function jugadoresElegibles(puesto) {
     const counts = conteoPorEquipo(puesto);
+    const idsJugador = alineaciones
+      .filter((a) => a.jornada === jornada && a.puesto === puesto && equiposEnJuego.has(a.equipo) && a.jugador_id)
+      .map((a) => a.jugador_id);
     return jugadores
-      .filter((j) => j.puesto === puesto && equiposEnJuego.has(j.equipo))
+      .filter((j) => idsJugador.includes(j.id))
       .map((j) => ({
         ...j,
         disabled: (counts[j.equipo] || 0) >= maxPorEquipo,
