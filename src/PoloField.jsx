@@ -51,7 +51,7 @@ const FIELD_SVG = `
 </svg>
 `;
 
-export default function PoloField({ slots, onSlotClick, capitanPuesto, onCaptainToggle }) {
+export default function PoloField({ slots, onSlotClick, capitanPuesto, onCaptainToggle, readOnly }) {
   return (
     <div className="field-wrap">
       <div dangerouslySetInnerHTML={{ __html: FIELD_SVG }} />
@@ -78,11 +78,11 @@ export default function PoloField({ slots, onSlotClick, capitanPuesto, onCaptain
               gap: 2,
               padding: '4px 8px',
               position: 'absolute',
-              cursor: 'pointer',
+              cursor: readOnly ? 'default' : 'pointer',
             }}
-            onClick={() => onSlotClick(box.puesto)}
+            onClick={() => !readOnly && onSlotClick(box.puesto)}
           >
-            {filled && (
+            {filled && !readOnly && (
               <button
                 onClick={(e) => { e.stopPropagation(); onCaptainToggle(box.puesto); }}
                 title={esCapitan ? 'Quitar capitán' : 'Nombrar capitán'}
@@ -118,7 +118,9 @@ export default function PoloField({ slots, onSlotClick, capitanPuesto, onCaptain
                 </span>
               </>
             ) : (
-              <span style={{ fontSize: '12px', color: '#c9d3e6', fontStyle: 'italic' }}>Elegir jugador</span>
+              <span style={{ fontSize: '12px', color: '#c9d3e6', fontStyle: 'italic' }}>
+                {readOnly ? 'Sin elegir' : 'Elegir jugador'}
+              </span>
             )}
           </div>
         );

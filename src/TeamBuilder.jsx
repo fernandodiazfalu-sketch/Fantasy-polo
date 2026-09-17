@@ -11,6 +11,8 @@ export default function TeamBuilder({ session }) {
   const [jornada, setJornada] = useState('Fecha 1');
   const [slots, setSlots] = useState({}); // { [puesto]: jugador }
   const [capitan, setCapitan] = useState(null); // puesto (1-4) del capitán
+  const [todosEquipos, setTodosEquipos] = useState([]); // todos los equipos fantasy guardados, de todos los usuarios
+  const [viendoRival, setViendoRival] = useState(null); // user_id del rival que se está mirando, o null = el propio
   const [openPuesto, setOpenPuesto] = useState(null);
   const [saveStatus, setSaveStatus] = useState({ text: '', error: false });
   const [saving, setSaving] = useState(false);
@@ -19,16 +21,18 @@ export default function TeamBuilder({ session }) {
 
   useEffect(() => {
     async function load() {
-      const [{ data: jData }, { data: pData }, { data: aData }, { data: sData }] = await Promise.all([
+      const [{ data: jData }, { data: pData }, { data: aData }, { data: sData }, { data: eData }] = await Promise.all([
         supabase.from('polo_jugadores').select('*').order('equipo').order('puesto'),
         supabase.from('polo_partidos').select('*').order('id'),
         supabase.from('polo_alineaciones').select('*'),
         supabase.from('polo_stats').select('*'),
+        supabase.from('polo_fantasy_equipos').select('*'),
       ]);
       setJugadores(jData || []);
       setPartidos(pData || []);
       setAlineaciones(aData || []);
       setStats(sData || []);
+      setTodosEquipos(eData || []);
     }
     load();
   }, []);
@@ -53,6 +57,7 @@ export default function TeamBuilder({ session }) {
     async function loadSaved() {
       setSlots({});
       setCapitan(null);
+      setViendoRival(null);
       const { data } = await supabase
         .from('polo_fantasy_equipos')
         .select('slots, capitan_puesto')
@@ -69,6 +74,46 @@ export default function TeamBuilder({ session }) {
     if (jugadores.length) loadSaved();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jornada, jugadores.length]);
+
+  // Una fecha se considera "cerrada" cuando todos sus partidos ya tienen resultado cargado.
+  // Recién ahí se pueden ver los equipos de los rivales (para no filtrar picks antes de tiempo).
+  const jornadaCerrada = useMemo(() => {
+    const partidosDeLaFecha = partidos.filter((p) => p.jornada === jornada);
+    return partidosDeLaFecha.length > 0 && partidosDeLaFecha.every((p) => p.goles_local != null && p.goles_visitante != null);
+  }, [partidos, jornada]);
+
+  const rivales = useMemo(
+    () => todosEquipos.filter((e) => e.jornada === jornada && e.user_id !== session.user.id),
+    [todosEquipos, jornada, session.user.id]
+  );
+
+  const rivalSeleccionado = rivales.find((r) => r.user_id === viendoRival) || null;
+
+  const slotsRival = useMemo(() => {
+    if (!rivalSeleccionado?.slots) return {};
+    const bySlot = {};
+    rivalSeleccionado.slots.forEach((s) => { bySlot[s.puesto] = { ...s, id: s.jugador_id }; });
+    return bySlot;
+  }, [rivalSeleccionado]);
+
+  function puntosDeJugadorEnFecha(jugadorId, equipoReal) {
+    const partido = partidos.find((p) => p.jornada === jornada && (p.local === equipoReal || p.visitante === equipoReal));
+    if (!partido) return 0;
+    const s = stats.find((st) => st.partido_id === partido.id && st.jugador_id === jugadorId);
+    return Number(s?.puntos ?? 0);
+  }
+
+  const puntosRival = useMemo(() => {
+    if (!rivalSeleccionado) return 0;
+    return (rivalSeleccionado.slots || []).reduce((sum, s) => {
+      const pts = puntosDeJugadorEnFecha(s.jugador_id, s.equipo);
+      return sum + (rivalSeleccionado.capitan_puesto === s.puesto ? pts * 2 : pts);
+    }, 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rivalSeleccionado, stats, partidos, jornada]);
+
+  const fieldSlots = viendoRival ? slotsRival : slots;
+  const fieldCapitan = viendoRival ? rivalSeleccionado?.capitan_puesto ?? null : capitan;
 
   function conteoPorEquipo(excluyendoPuesto) {
     const counts = {};
@@ -136,6 +181,10 @@ export default function TeamBuilder({ session }) {
       setSaveStatus({ text: 'No se pudo guardar. Probá de nuevo.', error: true });
     } else {
       setSaveStatus({ text: 'Equipo guardado.', error: false });
+      setTodosEquipos((prev) => {
+        const otros = prev.filter((e) => !(e.user_id === session.user.id && e.jornada === jornada));
+        return [...otros, { user_id: session.user.id, email: session.user.email, apodo, jornada, slots: slotsArray, capitan_puesto: capitan }];
+      });
     }
   }
 
@@ -180,12 +229,34 @@ export default function TeamBuilder({ session }) {
         {' '}Tocá el círculo "C" sobre un jugador elegido para nombrarlo capitán (duplica sus puntos).
       </p>
 
+      {jornadaCerrada && rivales.length > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
+          <label style={{ fontSize: 13, color: 'var(--navy-soft)', fontWeight: 600 }}>Ver equipo de:</label>
+          <select
+            value={viendoRival || ''}
+            onChange={(e) => setViendoRival(e.target.value || null)}
+            style={{ padding: '6px 10px', borderRadius: 4, fontSize: 13 }}
+          >
+            <option value="">Tu equipo</option>
+            {rivales.map((r) => (
+              <option key={r.user_id} value={r.user_id}>{r.apodo || r.email}</option>
+            ))}
+          </select>
+          {rivalSeleccionado && (
+            <span style={{ fontSize: 13, color: 'var(--gold)', fontWeight: 700 }}>
+              Puntaje: {puntosRival}
+            </span>
+          )}
+        </div>
+      )}
+
       <div className="builder-layout">
         <PoloField
-          slots={slots}
+          slots={fieldSlots}
           onSlotClick={setOpenPuesto}
-          capitanPuesto={capitan}
+          capitanPuesto={fieldCapitan}
           onCaptainToggle={toggleCapitan}
+          readOnly={!!viendoRival}
         />
 
         <div className="side-panel">
