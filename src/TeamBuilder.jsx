@@ -143,7 +143,10 @@ export default function TeamBuilder({ session }) {
     await supabase.auth.signOut();
   }
 
-  const jornadasDisponibles = ['Fecha 1', 'Fecha 2', 'Fecha 3'];
+  const jornadasDisponibles = useMemo(
+    () => [...new Set(partidos.map((p) => p.jornada))],
+    [partidos]
+  );
 
   return (
     <div className="app-shell">
