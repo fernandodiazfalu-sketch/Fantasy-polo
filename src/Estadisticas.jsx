@@ -92,19 +92,19 @@ export default function Estadisticas() {
         </div>
         <div className="summary-row meta" style={{ fontSize: 11 }}>
           <span style={{ flex: 1 }}>Jugador</span>
-          <span style={th}>PJ</span>
-          <span style={th}>Prom.</span>
-          <span style={th}>Pts</span>
+          <span style={{ ...th, flexShrink: 0 }}>PJ</span>
+          <span style={{ ...th, flexShrink: 0 }}>Prom.</span>
+          <span style={{ ...th, flexShrink: 0 }}>Pts</span>
         </div>
         {ranking.map((j, i) => (
           <div className="summary-row" key={j.id}>
-            <div>
+            <div style={{ flex: 1, minWidth: 0 }}>
               <div className="name">{i + 1}. {j.nombre}</div>
               <div className="meta">{j.equipo} · Puesto {j.puesto} · hcp {j.hcp}</div>
             </div>
-            <span style={td}>{j.pj}</span>
-            <span style={td}>{j.promedio.toFixed(1)}</span>
-            <span style={{ ...td, color: 'var(--gold-bright)', fontWeight: 700 }}>{j.puntos}</span>
+            <span style={{ ...td, flexShrink: 0 }}>{j.pj}</span>
+            <span style={{ ...td, flexShrink: 0 }}>{j.promedio.toFixed(1)}</span>
+            <span style={{ ...td, flexShrink: 0, color: 'var(--gold-bright)', fontWeight: 700 }}>{j.puntos}</span>
           </div>
         ))}
       </div>
@@ -117,27 +117,27 @@ export default function Estadisticas() {
           <h2>{equipo}</h2>
           <div className="summary-row meta" style={{ fontSize: 11 }}>
             <span style={{ flex: 1 }}>Jugador</span>
-            <span style={th}>PJ</span>
-            <span style={th}>GC</span>
-            <span style={th}>GP</span>
-            <span style={th}>P1</span>
-            <span style={th}>Cnr</span>
-            <span style={th}>TA</span>
-            <span style={th}>Pts</span>
+            <span style={{ ...th, flexShrink: 0 }}>PJ</span>
+            <span style={{ ...th, flexShrink: 0 }}>GC</span>
+            <span style={{ ...th, flexShrink: 0 }}>GP</span>
+            <span style={{ ...th, flexShrink: 0 }}>P1</span>
+            <span style={{ ...th, flexShrink: 0 }}>Cnr</span>
+            <span style={{ ...th, flexShrink: 0 }}>TA</span>
+            <span style={{ ...th, flexShrink: 0 }}>Pts</span>
           </div>
           {acumulado
             .filter((j) => j.equipo === equipo)
             .sort((a, b) => a.puesto - b.puesto)
             .map((j) => (
               <div className="summary-row" key={j.id} style={{ fontSize: 13 }}>
-                <span style={{ flex: 1 }}>{j.nombre} <span className="meta">(P{j.puesto})</span></span>
-                <span style={td}>{j.pj}</span>
-                <span style={td}>{j.goles_campo}</span>
-                <span style={td}>{j.goles_penal}</span>
-                <span style={td}>{j.penal_1}</span>
-                <span style={td}>{j.corners}</span>
-                <span style={td}>{j.tarjetas_amarillas}</span>
-                <span style={{ ...td, color: 'var(--gold-bright)', fontWeight: 700 }}>{j.puntos}</span>
+                <span style={{ flex: 1, minWidth: 0 }}>{j.nombre} <span className="meta">(P{j.puesto})</span></span>
+                <span style={{ ...td, flexShrink: 0 }}>{j.pj}</span>
+                <span style={{ ...td, flexShrink: 0 }}>{j.goles_campo}</span>
+                <span style={{ ...td, flexShrink: 0 }}>{j.goles_penal}</span>
+                <span style={{ ...td, flexShrink: 0 }}>{j.penal_1}</span>
+                <span style={{ ...td, flexShrink: 0 }}>{j.corners}</span>
+                <span style={{ ...td, flexShrink: 0 }}>{j.tarjetas_amarillas}</span>
+                <span style={{ ...td, flexShrink: 0, color: 'var(--gold-bright)', fontWeight: 700 }}>{j.puntos}</span>
               </div>
             ))}
         </div>
