@@ -4,6 +4,7 @@ import Auth from './Auth';
 import TeamBuilder from './TeamBuilder';
 import Alineaciones from './Alineaciones';
 import Clasificacion from './Clasificacion';
+import Estadisticas from './Estadisticas';
 import { isAdmin } from './adminConfig';
 
 export default function App() {
@@ -43,6 +44,7 @@ export default function App() {
           { id: 'equipo', label: 'Mi equipo' },
           ...(admin ? [{ id: 'alineaciones', label: 'Alineaciones' }] : []),
           { id: 'clasificacion', label: 'Clasificación' },
+          { id: 'estadisticas', label: 'Estadísticas' },
         ].map((tab) => (
           <button
             key={tab.id}
@@ -74,6 +76,7 @@ export default function App() {
       {view === 'equipo' && <TeamBuilder session={session} />}
       {view === 'alineaciones' && admin && <Alineaciones />}
       {view === 'clasificacion' && <Clasificacion />}
+      {view === 'estadisticas' && <Estadisticas />}
     </>
   );
 }
