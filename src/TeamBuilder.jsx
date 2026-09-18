@@ -87,6 +87,17 @@ export default function TeamBuilder({ session }) {
     [todosEquipos, jornada, session.user.id]
   );
 
+  // PV (puntos fantasy) acumulados de cada jugador en lo que va del torneo, para mostrar en el selector
+  const statsPorJugador = useMemo(() => {
+    const acc = {};
+    stats.forEach((s) => {
+      if (!acc[s.jugador_id]) acc[s.jugador_id] = { pj: 0, total: 0 };
+      acc[s.jugador_id].pj += 1;
+      acc[s.jugador_id].total += Number(s.puntos ?? 0);
+    });
+    return acc;
+  }, [stats]);
+
   const rivalSeleccionado = rivales.find((r) => r.user_id === viendoRival) || null;
 
   const slotsRival = useMemo(() => {
@@ -311,21 +322,30 @@ export default function TeamBuilder({ session }) {
           <div className="picker-card" onClick={(e) => e.stopPropagation()}>
             <h3>Puesto {openPuesto}</h3>
             <p className="picker-sub">Elegí un jugador que juegue este puesto en su equipo.</p>
-            {jugadoresElegibles(openPuesto).map((j) => (
-              <button
-                key={j.id}
-                className="player-option"
-                disabled={j.disabled}
-                onClick={() => elegirJugador(openPuesto, j)}
-              >
-                <span>
-                  <span className="p-name">{j.nombre}</span>
-                  <br />
-                  <span className="p-team">{j.equipo}{j.disabled ? ' · equipo completo' : ''}</span>
-                </span>
-                <span className="p-hcp">{j.hcp}</span>
-              </button>
-            ))}
+            {jugadoresElegibles(openPuesto).map((j) => {
+              const st = statsPorJugador[j.id];
+              const pj = st?.pj || 0;
+              const total = st?.total || 0;
+              const promedio = pj ? (total / pj).toFixed(1) : '—';
+              return (
+                <button
+                  key={j.id}
+                  className="player-option"
+                  disabled={j.disabled}
+                  onClick={() => elegirJugador(openPuesto, j)}
+                >
+                  <span>
+                    <span className="p-name">{j.nombre}</span>
+                    <br />
+                    <span className="p-team">
+                      {j.equipo}{j.disabled ? ' · equipo completo' : ''}
+                      {' · '}PV {total} ({pj ? `prom. ${promedio}` : 'sin partidos'})
+                    </span>
+                  </span>
+                  <span className="p-hcp">{j.hcp}</span>
+                </button>
+              );
+            })}
             <button className="picker-close" onClick={() => setOpenPuesto(null)}>Cancelar</button>
           </div>
         </div>
