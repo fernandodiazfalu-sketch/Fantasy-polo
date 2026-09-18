@@ -35,7 +35,7 @@ export default function Auth() {
   return (
     <div className="auth-card">
       <h1>Fantasy Polo</h1>
-      <p className="tag">61° Abierto del Jockey Club · Copa Éminent</p>
+      <p className="tag">Triple Corona · Grupo de amigos</p>
       <form onSubmit={handleSubmit}>
         {mode === 'signup' && (
           <>

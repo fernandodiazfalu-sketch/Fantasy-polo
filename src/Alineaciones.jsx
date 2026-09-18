@@ -1,26 +1,27 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { supabase } from './supabaseClient';
 
-export default function Alineaciones() {
+export default function Alineaciones({ torneo }) {
   const [partidos, setPartidos] = useState([]);
   const [jugadores, setJugadores] = useState([]);
   const [alineaciones, setAlineaciones] = useState([]);
-  const [jornada, setJornada] = useState('Fecha 1');
+  const [jornada, setJornada] = useState(null);
   const [status, setStatus] = useState('');
   const [nuevoJugador, setNuevoJugador] = useState({}); // { [equipo]: { nombre, hcp, puesto } }
 
   async function loadAll() {
     const [{ data: p }, { data: j }, { data: a }] = await Promise.all([
-      supabase.from('polo_partidos').select('*').order('id'),
-      supabase.from('polo_jugadores').select('*').order('equipo').order('puesto'),
-      supabase.from('polo_alineaciones').select('*'),
+      supabase.from('polo_partidos').select('*').eq('torneo', torneo).order('id'),
+      supabase.from('polo_jugadores').select('*').eq('torneo', torneo).order('equipo').order('puesto'),
+      supabase.from('polo_alineaciones').select('*').eq('torneo', torneo),
     ]);
     setPartidos(p || []);
     setJugadores(j || []);
     setAlineaciones(a || []);
+    setJornada((prev) => (p?.some((row) => row.jornada === prev) ? prev : p?.[0]?.jornada || null));
   }
 
-  useEffect(() => { loadAll(); }, []);
+  useEffect(() => { loadAll(); }, [torneo]);
 
   const jornadas = useMemo(
     () => [...new Set(partidos.map((p) => p.jornada))],
@@ -51,8 +52,8 @@ export default function Alineaciones() {
   async function asignar(equipo, puesto, jugadorId) {
     setStatus('Guardando...');
     const { error } = await supabase.from('polo_alineaciones').upsert(
-      { jornada, equipo, puesto, jugador_id: jugadorId ? Number(jugadorId) : null },
-      { onConflict: 'jornada,equipo,puesto' }
+      { torneo, jornada, equipo, puesto, jugador_id: jugadorId ? Number(jugadorId) : null },
+      { onConflict: 'torneo,jornada,equipo,puesto' }
     );
     if (error) {
       setStatus('Error al guardar: ' + error.message);
@@ -68,7 +69,7 @@ export default function Alineaciones() {
     setStatus('Agregando jugador...');
     const { data, error } = await supabase
       .from('polo_jugadores')
-      .insert({ nombre: form.nombre, hcp: Number(form.hcp), equipo, puesto })
+      .insert({ torneo, nombre: form.nombre, hcp: Number(form.hcp), equipo, puesto })
       .select()
       .single();
     if (error) {
@@ -97,6 +98,8 @@ export default function Alineaciones() {
       </div>
 
       {status && <p className="jornada-note">{status}</p>}
+
+      {!jornada && <p className="jornada-note">Todavía no hay fechas cargadas para este torneo.</p>}
 
       {equiposDeLaJornada.map((equipo) => (
         <div className="summary-card" key={equipo} style={{ marginBottom: 18 }}>

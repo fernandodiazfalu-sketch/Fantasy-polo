@@ -3,12 +3,12 @@ import { supabase } from './supabaseClient';
 import PoloField from './PoloField';
 import InfoPanel from './InfoPanel';
 
-export default function TeamBuilder({ session }) {
+export default function TeamBuilder({ session, torneo }) {
   const [jugadores, setJugadores] = useState([]);
   const [partidos, setPartidos] = useState([]);
   const [alineaciones, setAlineaciones] = useState([]);
   const [stats, setStats] = useState([]);
-  const [jornada, setJornada] = useState('Fecha 1');
+  const [jornada, setJornada] = useState(null);
   const [slots, setSlots] = useState({}); // { [puesto]: jugador }
   const [capitan, setCapitan] = useState(null); // puesto (1-4) del capitán
   const [todosEquipos, setTodosEquipos] = useState([]); // todos los equipos fantasy guardados, de todos los usuarios
@@ -21,21 +21,28 @@ export default function TeamBuilder({ session }) {
 
   useEffect(() => {
     async function load() {
-      const [{ data: jData }, { data: pData }, { data: aData }, { data: sData }, { data: eData }] = await Promise.all([
-        supabase.from('polo_jugadores').select('*').order('equipo').order('puesto'),
-        supabase.from('polo_partidos').select('*').order('id'),
-        supabase.from('polo_alineaciones').select('*'),
-        supabase.from('polo_stats').select('*'),
-        supabase.from('polo_fantasy_equipos').select('*'),
+      const [{ data: jData }, { data: pData }, { data: aData }, { data: eData }] = await Promise.all([
+        supabase.from('polo_jugadores').select('*').eq('torneo', torneo).order('equipo').order('puesto'),
+        supabase.from('polo_partidos').select('*').eq('torneo', torneo).order('id'),
+        supabase.from('polo_alineaciones').select('*').eq('torneo', torneo),
+        supabase.from('polo_fantasy_equipos').select('*').eq('torneo', torneo),
       ]);
       setJugadores(jData || []);
       setPartidos(pData || []);
       setAlineaciones(aData || []);
-      setStats(sData || []);
       setTodosEquipos(eData || []);
+      setJornada(pData?.[0]?.jornada || null);
+
+      const partidoIds = (pData || []).map((p) => p.id);
+      if (partidoIds.length) {
+        const { data: sData } = await supabase.from('polo_stats').select('*').in('partido_id', partidoIds);
+        setStats(sData || []);
+      } else {
+        setStats([]);
+      }
     }
     load();
-  }, []);
+  }, [torneo]);
 
   // Equipos reales que juegan en la jornada seleccionada
   const equiposEnJuego = useMemo(() => {
@@ -62,6 +69,7 @@ export default function TeamBuilder({ session }) {
         .from('polo_fantasy_equipos')
         .select('slots, capitan_puesto')
         .eq('user_id', session.user.id)
+        .eq('torneo', torneo)
         .eq('jornada', jornada)
         .maybeSingle();
       if (data?.slots?.length) {
@@ -71,9 +79,9 @@ export default function TeamBuilder({ session }) {
       }
       if (data?.capitan_puesto) setCapitan(data.capitan_puesto);
     }
-    if (jugadores.length) loadSaved();
+    if (jugadores.length && jornada) loadSaved();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [jornada, jugadores.length]);
+  }, [jornada, jugadores.length, torneo]);
 
   // Una fecha se considera "cerrada" cuando todos sus partidos ya tienen resultado cargado.
   // Recién ahí se pueden ver los equipos de los rivales (para no filtrar picks antes de tiempo).
@@ -192,11 +200,12 @@ export default function TeamBuilder({ session }) {
         user_id: session.user.id,
         email: session.user.email,
         apodo,
+        torneo,
         jornada,
         slots: slotsArray,
         capitan_puesto: capitan,
       },
-      { onConflict: 'user_id,jornada' }
+      { onConflict: 'user_id,torneo,jornada' }
     );
     setSaving(false);
     if (error) {
@@ -205,7 +214,7 @@ export default function TeamBuilder({ session }) {
       setSaveStatus({ text: 'Equipo guardado.', error: false });
       setTodosEquipos((prev) => {
         const otros = prev.filter((e) => !(e.user_id === session.user.id && e.jornada === jornada));
-        return [...otros, { user_id: session.user.id, email: session.user.email, apodo, jornada, slots: slotsArray, capitan_puesto: capitan }];
+        return [...otros, { user_id: session.user.id, email: session.user.email, apodo, torneo, jornada, slots: slotsArray, capitan_puesto: capitan }];
       });
     }
   }
@@ -219,12 +228,26 @@ export default function TeamBuilder({ session }) {
     [partidos]
   );
 
+  if (!jornada) {
+    return (
+      <div className="app-shell">
+        <header className="masthead">
+          <div>
+            <h1>Fantasy Polo</h1>
+            <div className="subtitle">{torneo}</div>
+          </div>
+        </header>
+        <p className="jornada-note">Todavía no hay fechas cargadas para este torneo.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="app-shell">
       <header className="masthead">
         <div>
           <h1>Fantasy Polo</h1>
-          <div className="subtitle">61° Abierto del Jockey Club · Copa Éminent</div>
+          <div className="subtitle">{torneo}</div>
         </div>
         <div className="user-chip">
           {apodo}

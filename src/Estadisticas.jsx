@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { supabase } from './supabaseClient';
 
-export default function Estadisticas() {
+export default function Estadisticas({ torneo }) {
   const [jugadores, setJugadores] = useState([]);
   const [stats, setStats] = useState([]);
   const [filtroPuesto, setFiltroPuesto] = useState('todos');
@@ -9,15 +9,21 @@ export default function Estadisticas() {
 
   useEffect(() => {
     async function load() {
-      const [{ data: j }, { data: s }] = await Promise.all([
-        supabase.from('polo_jugadores').select('*').order('equipo').order('puesto'),
-        supabase.from('polo_stats').select('*'),
+      const [{ data: j }, { data: p }] = await Promise.all([
+        supabase.from('polo_jugadores').select('*').eq('torneo', torneo).order('equipo').order('puesto'),
+        supabase.from('polo_partidos').select('id').eq('torneo', torneo),
       ]);
       setJugadores(j || []);
-      setStats(s || []);
+      const partidoIds = (p || []).map((row) => row.id);
+      if (partidoIds.length) {
+        const { data: s } = await supabase.from('polo_stats').select('*').in('partido_id', partidoIds);
+        setStats(s || []);
+      } else {
+        setStats([]);
+      }
     }
     load();
-  }, []);
+  }, [torneo]);
 
   const acumulado = useMemo(() => {
     const porJugador = {};

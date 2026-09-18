@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { supabase } from './supabaseClient';
 
-export default function Clasificacion() {
+export default function Clasificacion({ torneo }) {
   const [equipos, setEquipos] = useState([]);
   const [partidos, setPartidos] = useState([]);
   const [stats, setStats] = useState([]);
@@ -10,18 +10,25 @@ export default function Clasificacion() {
 
   useEffect(() => {
     async function load() {
-      const [{ data: eq }, { data: p }, { data: s }] = await Promise.all([
-        supabase.from('polo_fantasy_equipos').select('*'),
-        supabase.from('polo_partidos').select('*'),
-        supabase.from('polo_stats').select('*'),
+      setLoading(true);
+      setVista('total');
+      const [{ data: eq }, { data: p }] = await Promise.all([
+        supabase.from('polo_fantasy_equipos').select('*').eq('torneo', torneo),
+        supabase.from('polo_partidos').select('*').eq('torneo', torneo),
       ]);
       setEquipos(eq || []);
       setPartidos(p || []);
-      setStats(s || []);
+      const partidoIds = (p || []).map((row) => row.id);
+      if (partidoIds.length) {
+        const { data: s } = await supabase.from('polo_stats').select('*').in('partido_id', partidoIds);
+        setStats(s || []);
+      } else {
+        setStats([]);
+      }
       setLoading(false);
     }
     load();
-  }, []);
+  }, [torneo]);
 
   const jornadas = useMemo(() => [...new Set(partidos.map((p) => p.jornada))], [partidos]);
 
@@ -71,7 +78,7 @@ export default function Clasificacion() {
       <header className="masthead">
         <div>
           <h1>Clasificación</h1>
-          <div className="subtitle">61° Abierto del Jockey Club · Copa Éminent</div>
+          <div className="subtitle">{torneo}</div>
         </div>
       </header>
 
