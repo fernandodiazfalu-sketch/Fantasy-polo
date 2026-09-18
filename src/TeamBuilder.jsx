@@ -156,6 +156,17 @@ export default function TeamBuilder({ session }) {
     setSaveStatus({ text: '', error: false });
   }
 
+  function quitarJugador(puesto) {
+    setSlots((prev) => {
+      const next = { ...prev };
+      delete next[puesto];
+      return next;
+    });
+    setCapitan((prev) => (prev === puesto ? null : prev));
+    setOpenPuesto(null);
+    setSaveStatus({ text: '', error: false });
+  }
+
   function toggleCapitan(puesto) {
     setCapitan((prev) => (prev === puesto ? null : puesto));
     setSaveStatus({ text: '', error: false });
@@ -322,6 +333,25 @@ export default function TeamBuilder({ session }) {
           <div className="picker-card" onClick={(e) => e.stopPropagation()}>
             <h3>Puesto {openPuesto}</h3>
             <p className="picker-sub">Elegí un jugador que juegue este puesto en su equipo.</p>
+            {slots[openPuesto] && (
+              <button
+                onClick={() => quitarJugador(openPuesto)}
+                style={{
+                  width: '100%',
+                  textAlign: 'left',
+                  background: '#fff',
+                  border: '1px dashed var(--line)',
+                  borderRadius: 4,
+                  padding: '10px 14px',
+                  marginBottom: 8,
+                  color: '#b3372c',
+                  fontSize: 13,
+                  fontWeight: 600,
+                }}
+              >
+                ✕ Quitar jugador de este puesto
+              </button>
+            )}
             {jugadoresElegibles(openPuesto).map((j) => {
               const st = statsPorJugador[j.id];
               const pj = st?.pj || 0;
