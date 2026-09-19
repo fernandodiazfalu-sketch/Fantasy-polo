@@ -219,10 +219,6 @@ export default function TeamBuilder({ session, torneo }) {
     }
   }
 
-  async function cerrarSesion() {
-    await supabase.auth.signOut();
-  }
-
   const jornadasDisponibles = useMemo(
     () => [...new Set(partidos.map((p) => p.jornada))],
     [partidos]
@@ -248,10 +244,6 @@ export default function TeamBuilder({ session, torneo }) {
         <div>
           <h1>Fantasy Polo</h1>
           <div className="subtitle">{torneo}</div>
-        </div>
-        <div className="user-chip">
-          {apodo}
-          <button onClick={cerrarSesion}>Cerrar sesión</button>
         </div>
       </header>
 
