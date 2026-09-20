@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { supabase } from './supabaseClient';
 import PoloField from './PoloField';
 import InfoPanel from './InfoPanel';
+import Avatar from './Avatar';
 
 export default function TeamBuilder({ session, torneo }) {
   const [jugadores, setJugadores] = useState([]);
@@ -379,12 +380,15 @@ export default function TeamBuilder({ session, torneo }) {
                   disabled={j.disabled}
                   onClick={() => elegirJugador(openPuesto, j)}
                 >
-                  <span>
-                    <span className="p-name">{j.nombre}</span>
-                    <br />
-                    <span className="p-team">
-                      {j.equipo}{j.disabled ? ' · equipo completo' : ''}
-                      {' · '}PV {total} ({pj ? `prom. ${promedio}` : 'sin partidos'})
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <Avatar jugador={j} size={34} />
+                    <span>
+                      <span className="p-name">{j.nombre}</span>
+                      <br />
+                      <span className="p-team">
+                        {j.equipo}{j.disabled ? ' · equipo completo' : ''}
+                        {' · '}PV {total} ({pj ? `prom. ${promedio}` : 'sin partidos'})
+                      </span>
                     </span>
                   </span>
                   <span className="p-hcp">{j.hcp}</span>

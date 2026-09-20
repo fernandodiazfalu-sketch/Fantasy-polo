@@ -72,11 +72,10 @@ export default function PoloField({ slots, onSlotClick, capitanPuesto, onCaptain
               boxShadow: esCapitan ? '0 0 0 2px #f4d03f' : 'none',
               color: '#fff',
               display: 'flex',
-              flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: 2,
-              padding: '4px 8px',
+              gap: 8,
+              padding: '4px 10px',
               position: 'absolute',
               cursor: readOnly ? 'default' : 'pointer',
             }}
@@ -105,23 +104,43 @@ export default function PoloField({ slots, onSlotClick, capitanPuesto, onCaptain
                 C
               </button>
             )}
-            <span style={{ fontSize: '11px', color: '#f4d03f', fontWeight: 700, letterSpacing: '0.03em' }}>
-              PUESTO {box.puesto}
-            </span>
-            {filled ? (
-              <>
-                <span style={{ fontFamily: 'Fraunces, serif', fontSize: 'clamp(12px, 2.4vw, 15px)', fontWeight: 600, lineHeight: 1.15, textAlign: 'center' }}>
-                  {filled.nombre}{esCapitan ? ' (C)' : ''}
-                </span>
-                <span style={{ fontSize: '10px', color: '#c9d3e6' }}>
-                  {filled.equipo} · hcp {filled.hcp}
-                </span>
-              </>
-            ) : (
-              <span style={{ fontSize: '12px', color: '#c9d3e6', fontStyle: 'italic' }}>
-                {readOnly ? 'Sin elegir' : 'Elegir jugador'}
-              </span>
+            {filled && (
+              filled.foto ? (
+                <img
+                  src={filled.foto}
+                  alt={filled.nombre}
+                  style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', border: '2px solid #f4d03f', flexShrink: 0 }}
+                />
+              ) : (
+                <div style={{
+                  width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
+                  background: 'rgba(246,241,228,0.15)', border: '2px solid #f4d03f',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 13, fontWeight: 700, color: '#f4d03f',
+                }}>
+                  {filled.nombre.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase()}
+                </div>
+              )
             )}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: filled ? 'flex-start' : 'center', minWidth: 0 }}>
+              <span style={{ fontSize: '11px', color: '#f4d03f', fontWeight: 700, letterSpacing: '0.03em' }}>
+                PUESTO {box.puesto}
+              </span>
+              {filled ? (
+                <>
+                  <span style={{ fontFamily: 'Fraunces, serif', fontSize: 'clamp(12px, 2.4vw, 15px)', fontWeight: 600, lineHeight: 1.15 }}>
+                    {filled.nombre}{esCapitan ? ' (C)' : ''}
+                  </span>
+                  <span style={{ fontSize: '10px', color: '#c9d3e6' }}>
+                    {filled.equipo} · hcp {filled.hcp}
+                  </span>
+                </>
+              ) : (
+                <span style={{ fontSize: '12px', color: '#c9d3e6', fontStyle: 'italic' }}>
+                  {readOnly ? 'Sin elegir' : 'Elegir jugador'}
+                </span>
+              )}
+            </div>
           </div>
         );
       })}
